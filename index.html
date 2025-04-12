@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Huawei 5G Signal Info</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart-container {
+      width: 400px;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Huawei 5G Signal Information</h1>
+  <div id="charts"></div>
+
+  <script>
+    async function fetchAndDisplaySignalInfo() {
+      try {
+        const response = await fetch('http://192.168.100.1/api/device/signal');
+        const xmlText = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+        const elements = xmlDoc.getElementsByTagName('response')[0].children;
+        
+        const chartsContainer = document.getElementById('charts');
+        let index = 0;
+
+        for (let el of elements) {
+          const name = el.tagName;
+          const rawValue = el.textContent.trim();
+
+          if (!rawValue) continue;
+
+          // Try to extract numeric value (e.g., remove units like dBm)
+          const match = rawValue.match(/-?\d+(\.\d+)?/);
+          if (!match) continue;
+
+          const value = parseFloat(match[0]);
+
+          // Create canvas for chart
+          const chartDiv = document.createElement('div');
+          chartDiv.className = 'chart-container';
+          const canvas = document.createElement('canvas');
+          canvas.id = 'chart_' + index++;
+          chartDiv.appendChild(canvas);
+          chartsContainer.appendChild(chartDiv);
+
+          // Create bar chart
+          new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: [name],
+              datasets: [{
+                label: name,
+                data: [value],
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              plugins: {
+                title: {
+                  display: true,
+                  text: `${name} Value`
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+
+        if (index === 0) {
+          chartsContainer.innerHTML = "<p>No numeric data found in the response.</p>";
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch signal data:", error);
+        document.getElementById('charts').innerHTML = "<p>Error fetching signal data.</p>";
+      }
+    }
+
+    fetchAndDisplaySignalInfo();
+  </script>
+</body>
+</html>
